@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hiking Quiz in Valmiera</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #map { height: 100vh; z-index: 1; }
+    .question-box, .info-box {
+      position: fixed; top: 15%; left: 10%; right: 10%; background: #fff;
+      padding: 20px; border: 2px solid #333; display: none; z-index: 9999;
+    }
+    .top-buttons {
+      position: fixed; top: 10px; left: 10px; z-index: 10000;
+    }
+    .top-buttons button {
+      margin-right: 10px; padding: 5px 10px;
+    }
+    #finishBox {
+      position: fixed; bottom: 10px; right: 10px; background: white; padding: 10px;
+      border: 1px solid black; z-index: 10000;
+    }
+  </style>
+</head>
+<body>
+  <div class="top-buttons">
+    <button onclick="toggleBox('info')">Instructions</button>
+    <button onclick="showProgress()">Progress</button>
+  </div>
+
+  <div id="map"></div>
+
+  <div id="questionBox" class="question-box">
+    <p id="questionText"></p>
+    <div id="answerButtons"></div>
+  </div>
+
+  <div id="infoBox" class="info-box">
+    <h3>Instructions</h3>
+    <p>Walk to the points on the map. When you're close, a multiple choice question will appear. Answer all 10 questions and finish the route to see your results.</p>
+    <button onclick="toggleBox('info')">Close</button>
+  </div>
+
+  <div id="progressBox" class="info-box">
+    <h3>Progress</h3>
+    <p id="progressText"></p>
+    <button onclick="toggleBox('progress')">Close</button>
+  </div>
+
+  <div id="finishBox">
+    <button onclick="finishQuiz()">Finish Route</button>
+    <p id="result"></p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    const redIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
+      iconSize: [25, 25]
+    });
+
+    const greenIcon = L.icon({
+      iconUrl: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
+      iconSize: [25, 25]
+    });
+
+    const checkpoints = [
+  { lat: 57.5340, lng: 25.4300, question: "Question 1: What color is the sky?", options: ["Blue", "Red", "Green", "Yellow"], correct: 0, answered: false, marker: null },
+  { lat: 57.5322, lng: 25.4343, question: "Question 2: What animal lives in the forest?", options: ["Dog", "Cat", "Wolf", "Horse"], correct: 2, answered: false, marker: null },
+  { lat: 57.5358, lng: 25.4369, question: "Question 3: What season follows winter?", options: ["Spring", "Summer", "Autumn", "Fall"], correct: 0, answered: false, marker: null },
+  { lat: 57.5380, lng: 25.4386, question: "Question 4: Which is a type of tree?", options: ["Oak", "Stone", "Moss", "Cloud"], correct: 0, answered: false, marker: null },
+  { lat: 57.5403, lng: 25.4386, question: "Question 5: What do birds use to fly?", options: ["Fins", "Wings", "Paws", "Hands"], correct: 1, answered: false, marker: null },
+  { lat: 57.5400, lng: 25.4344, question: "Question 6: What do you call a young tree?", options: ["Sapling", "Twig", "Stick", "Brush"], correct: 0, answered: false, marker: null },
+  { lat: 57.5386, lng: 25.4304, question: "Question 7: Which direction does the sun rise?", options: ["North", "West", "East", "South"], correct: 2, answered: false, marker: null },
+  { lat: 57.5392, lng: 25.4283, question: "Question 8: What do hikers use to navigate?", options: ["Clock", "Compass", "Microscope", "Phone"], correct: 1, answered: false, marker: null },
+  { lat: 57.5391, lng: 25.4257, question: "Question 9: What is essential to carry while hiking?", options: ["TV", "Water", "Speaker", "Remote"], correct: 1, answered: false, marker: null },
+  { lat: 57.5379, lng: 25.4234, question: "Question 10: Which one is a bird?", options: ["Sparrow", "Lizard", "Frog", "Worm"], correct: 0, answered: false, marker: null }
+];
+
+    let correctAnswers = 0;
+    let answeredCount = 0;
+    let currentQuestionIndex = null;
+    let map, userMarker;
+
+    function initMap() {
+      map = L.map('map').setView([57.5412, 25.4270], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      checkpoints.forEach((point, i) => {
+        point.marker = L.marker([point.lat, point.lng], { icon: redIcon })
+          .addTo(map)
+          .bindPopup("Question " + (i + 1));
+      });
+
+      if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(updateLocation, console.error, { enableHighAccuracy: true });
+      }
+    }
+
+    function updateLocation(pos) {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      if (userMarker) userMarker.setLatLng([lat, lng]);
+      else userMarker = L.marker([lat, lng], {
+        icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png', iconSize: [25, 25] })
+      }).addTo(map).bindPopup("You are here");
+
+      checkpoints.forEach((cp, i) => {
+        if (!cp.answered && getDistance(lat, lng, cp.lat, cp.lng) < 50) {
+          showQuestion(i);
+        }
+      });
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(Δφ/2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function showQuestion(index) {
+      currentQuestionIndex = index;
+      const cp = checkpoints[index];
+      document.getElementById('questionText').innerText = cp.question;
+
+      const btnContainer = document.getElementById('answerButtons');
+      btnContainer.innerHTML = '';
+
+      cp.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.innerText = opt;
+        btn.onclick = () => answerQuestion(i);
+        btnContainer.appendChild(btn);
+      });
+
+      document.getElementById('questionBox').style.display = 'block';
+    }
+
+    function answerQuestion(index) {
+      const cp = checkpoints[currentQuestionIndex];
+      cp.answered = true;
+      cp.marker.setIcon(greenIcon);
+      answeredCount++;
+      if (index === cp.correct) correctAnswers++;
+      document.getElementById('questionBox').style.display = 'none';
+    }
+
+    function finishQuiz() {
+      document.getElementById('result').innerText =
+        `You answered ${correctAnswers} out of ${checkpoints.length} questions correctly.`;
+    }
+
+    function toggleBox(type) {
+      document.getElementById(type + 'Box').style.display =
+        document.getElementById(type + 'Box').style.display === 'block' ? 'none' : 'block';
+    }
+
+    function showProgress() {
+      document.getElementById('progressText').innerText =
+        `${answeredCount} answered / ${checkpoints.length - answeredCount} remaining.`;
+      toggleBox('progress');
+    }
+
+    initMap();
+  </script>
+</body>
+</html>
