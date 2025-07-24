@@ -22,22 +22,10 @@
       position: fixed; bottom: 10px; right: 10px; background: white; padding: 10px;
       border: 1px solid black; z-index: 10000;
     }
-    #debugBox {
-      position: fixed; bottom: 10px; left: 10px; background: white; padding: 8px;
-      border: 1px solid #aaa; font-size: 12px; z-index: 10000;
-    }
   </style>
-<script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@1.0.0/dist/leaflet-rotate.min.js">
-    function resetRotation() {
-      if (map && map.setBearing) {
-        map.setBearing(0); // Reset rotation angle to 0
-      }
-    }
-$1
 </head>
 <body>
-  $1
-    <button onclick="resetRotation()">Reset Orientation</button>
+  <div class="top-buttons">
     <button onclick="toggleBox('info')">Instructions</button>
     <button onclick="showProgress()">Progress</button>
   </div>
@@ -66,12 +54,6 @@ $1
     <p id="result"></p>
   </div>
 
-  <div id="debugBox">
-    <div>Lat: <span id="debugLat">-</span></div>
-    <div>Lng: <span id="debugLng">-</span></div>
-    <div>Accuracy: <span id="debugAccuracy">-</span> m</div>
-  </div>
-
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script>
     const redIcon = L.icon({
@@ -85,17 +67,17 @@ $1
     });
 
     const checkpoints = [
-      { lat: 57.5412, lng: 25.4270, question: "Question 1: What color is the sky?", options: ["Blue", "Red", "Green", "Yellow"], correct: 0, answered: false, marker: null },
-      { lat: 57.5420, lng: 25.4285, question: "Question 2: What animal lives in the forest?", options: ["Dog", "Cat", "Wolf", "Horse"], correct: 2, answered: false, marker: null },
-      { lat: 57.5430, lng: 25.4260, question: "Question 3: What season follows winter?", options: ["Spring", "Summer", "Autumn", "Fall"], correct: 0, answered: false, marker: null },
-      { lat: 57.5445, lng: 25.4290, question: "Question 4: Which is a type of tree?", options: ["Oak", "Stone", "Moss", "Cloud"], correct: 0, answered: false, marker: null },
-      { lat: 57.5455, lng: 25.4250, question: "Question 5: What do birds use to fly?", options: ["Fins", "Wings", "Paws", "Hands"], correct: 1, answered: false, marker: null },
-      { lat: 57.5465, lng: 25.4280, question: "Question 6: What do you call a young tree?", options: ["Sapling", "Twig", "Stick", "Brush"], correct: 0, answered: false, marker: null },
-      { lat: 57.5470, lng: 25.4265, question: "Question 7: Which direction does the sun rise?", options: ["North", "West", "East", "South"], correct: 2, answered: false, marker: null },
-      { lat: 57.5480, lng: 25.4275, question: "Question 8: What do hikers use to navigate?", options: ["Clock", "Compass", "Microscope", "Phone"], correct: 1, answered: false, marker: null },
-      { lat: 57.5490, lng: 25.4295, question: "Question 9: What is essential to carry while hiking?", options: ["TV", "Water", "Speaker", "Remote"], correct: 1, answered: false, marker: null },
-      { lat: 57.5500, lng: 25.4305, question: "Question 10: Which one is a bird?", options: ["Sparrow", "Lizard", "Frog", "Worm"], correct: 0, answered: false, marker: null }
-    ];
+  { lat: 57.5340, lng: 25.4300, question: "Question 1: What color is the sky?", options: ["Blue", "Red", "Green", "Yellow"], correct: 0, answered: false, marker: null },
+  { lat: 57.5322, lng: 25.4343, question: "Question 2: What animal lives in the forest?", options: ["Dog", "Cat", "Wolf", "Horse"], correct: 2, answered: false, marker: null },
+  { lat: 57.5358, lng: 25.4369, question: "Question 3: What season follows winter?", options: ["Spring", "Summer", "Autumn", "Fall"], correct: 0, answered: false, marker: null },
+  { lat: 57.5380, lng: 25.4386, question: "Question 4: Which is a type of tree?", options: ["Oak", "Stone", "Moss", "Cloud"], correct: 0, answered: false, marker: null },
+  { lat: 57.5403, lng: 25.4386, question: "Question 5: What do birds use to fly?", options: ["Fins", "Wings", "Paws", "Hands"], correct: 1, answered: false, marker: null },
+  { lat: 57.5400, lng: 25.4344, question: "Question 6: What do you call a young tree?", options: ["Sapling", "Twig", "Stick", "Brush"], correct: 0, answered: false, marker: null },
+  { lat: 57.5386, lng: 25.4304, question: "Question 7: Which direction does the sun rise?", options: ["North", "West", "East", "South"], correct: 2, answered: false, marker: null },
+  { lat: 57.5392, lng: 25.4283, question: "Question 8: What do hikers use to navigate?", options: ["Clock", "Compass", "Microscope", "Phone"], correct: 1, answered: false, marker: null },
+  { lat: 57.5391, lng: 25.4257, question: "Question 9: What is essential to carry while hiking?", options: ["TV", "Water", "Speaker", "Remote"], correct: 1, answered: false, marker: null },
+  { lat: 57.5379, lng: 25.4234, question: "Question 10: Which one is a bird?", options: ["Sparrow", "Lizard", "Frog", "Worm"], correct: 0, answered: false, marker: null }
+];
 
     let correctAnswers = 0;
     let answeredCount = 0;
@@ -103,13 +85,7 @@ $1
     let map, userMarker;
 
     function initMap() {
-      map = L.map('map', {
-        center: [57.5412, 25.4270],
-        zoom: 14,
-        dragging: true,
-        zoomControl: true,
-        rotate: true
-      });
+      map = L.map('map').setView([57.5412, 25.4270], 14);
       L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
@@ -126,25 +102,15 @@ $1
     }
 
     function updateLocation(pos) {
-  const lat = pos.coords.latitude;
-  const lng = pos.coords.longitude;
-  const accuracy = pos.coords.accuracy;
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
 
-  document.getElementById("debugLat").innerText = lat.toFixed(6);
-  document.getElementById("debugLng").innerText = lng.toFixed(6);
-  document.getElementById("debugAccuracy").innerText = accuracy.toFixed(1);
+      if (userMarker) userMarker.setLatLng([lat, lng]);
+      else userMarker = L.marker([lat, lng], {
+        icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png', iconSize: [25, 25] })
+      }).addTo(map).bindPopup("You are here");
 
-  // Ignore very low accuracy positions
-  if (accuracy > 150) return;
-
-  if (userMarker) userMarker.setLatLng([lat, lng]);
-  else userMarker = L.marker([lat, lng], {
-    icon: L.icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/149/149059.png', iconSize: [25, 25] })
-  }).addTo(map).bindPopup("You are here");
-
-  const effectiveRadius = accuracy > 75 ? 100 : 50;
-
-  checkpoints.forEach((cp, i) => {
+      checkpoints.forEach((cp, i) => {
         if (!cp.answered && getDistance(lat, lng, cp.lat, cp.lng) < 50) {
           showQuestion(i);
         }
